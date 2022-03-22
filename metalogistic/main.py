@@ -825,15 +825,17 @@ class MetaLogistic(_MetaLogisticMonoFit):
 							if candidate.is_feasible():
 								self.candidates_valid.append(candidate)
 
+		# The below should be handled much more nicely
 		if self.candidates_valid:
 			self.valid_distribution = True
 			winning_candidate = sorted(self.candidates_valid, key=lambda c: c.mean_square_error())[0]
-
-			self.__dict__.update(winning_candidate.__dict__.copy())  # Should maybe do some filtering here
-			self.term_used = winning_candidate.term
-			self.fit_method_used = winning_candidate.fit_method
 		else:
 			self.valid_distribution = False
+			winning_candidate = self.candidates_all[0]
+
+		self.__dict__.update(winning_candidate.__dict__.copy())
+		self.term_used = winning_candidate.term
+		self.fit_method_used = winning_candidate.fit_method
 
 
 	def validate_inputs(
