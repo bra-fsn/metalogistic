@@ -446,28 +446,27 @@ class _MetaLogisticMonoFit(stats.rv_continuous):
 			else:
 				return np.inf
 
-		# `self.a_vector` is 0-indexed, while in Keelin 2016 the a-vector is 1-indexed.
-		# To make this method as easy as possible to read if following along with the paper, I create a dictionary `a`
-		# that mimics a 1-indexed vector.
-		a = {i + 1: element for i, element in enumerate(self.a_vector)}
+		# Note that `self.a_vector` is 0-indexed, while in Keelin 2016 the a-vector is 1-indexed.
+		# To make this method easier to read if following along with the paper, I subtract 1 when
+		# subscripting the self.a_vector
 
 		# The series of quantile functions. Although we only return the last result in the series, the entire series is necessary to construct it
 		ln_p_term = np.log(probability / (1 - probability))
 		p05_term = probability - 0.5
-		quantile_functions = {2: a[1] + a[2] * ln_p_term}
+		quantile_functions = {2: self.a_vector[1 - 1] + self.a_vector[2 - 1] * ln_p_term}
 
 		if self.term > 2:
-			quantile_functions[3] = quantile_functions[2] + a[3] * p05_term * ln_p_term
+			quantile_functions[3] = quantile_functions[2] + self.a_vector[3 - 1] * p05_term * ln_p_term
 		if self.term > 3:
-			quantile_functions[4] = quantile_functions[3] + a[4] * p05_term
+			quantile_functions[4] = quantile_functions[3] + self.a_vector[4 - 1] * p05_term
 
 		if self.term > 4:
 			for n in range(5, self.term + 1):
 				if n % 2 != 0:
-					quantile_functions[n] = quantile_functions[n - 1] + a[n] * p05_term ** ((n - 1) / 2)
+					quantile_functions[n] = quantile_functions[n - 1] + self.a_vector[n - 1] * p05_term ** ((n - 1) / 2)
 
 				if n % 2 == 0:
-					quantile_functions[n] = quantile_functions[n - 1] + a[n] * p05_term ** (n / 2 - 1) * ln_p_term
+					quantile_functions[n] = quantile_functions[n - 1] + self.a_vector[n - 1] * p05_term ** (n / 2 - 1) * ln_p_term
 
 		quantile_function = quantile_functions[self.term]
 
@@ -501,28 +500,27 @@ class _MetaLogisticMonoFit(stats.rv_continuous):
 		# The series of density functions. Although we only return the last result in the series, the entire series is necessary to construct it
 		density_functions = {}
 
-		# `self.a_vector` is 0-indexed, while in Keelin 2016 the a-vector is 1-indexed.
-		# To make this method as easy as possible to read if following along with the paper, I create a dictionary `a`
-		# that mimics a 1-indexed vector.
-		a = {i + 1: element for i, element in enumerate(self.a_vector)}
+		# Note that `self.a_vector` is 0-indexed, while in Keelin 2016 the a-vector is 1-indexed.
+		# To make this method easier to read if following along with the paper, I subtract 1 when
+		# subscripting the self.a_vector
 
 		ln_p_term = np.log(cumulative_prob / (1 - cumulative_prob))
 		p05_term = cumulative_prob - 0.5
 		p1p_term = cumulative_prob * (1 - cumulative_prob)
 
-		density_functions[2] = p1p_term / a[2]
+		density_functions[2] = p1p_term / self.a_vector[2 - 1]
 		if self.term > 2:
-			density_functions[3] = 1 / (1 / density_functions[2] + a[3] * (p05_term / p1p_term + ln_p_term))
+			density_functions[3] = 1 / (1 / density_functions[2] + self.a_vector[3 - 1] * (p05_term / p1p_term + ln_p_term))
 		if self.term > 3:
-			density_functions[4] = 1 / (1 / density_functions[3] + a[4])
+			density_functions[4] = 1 / (1 / density_functions[3] + self.a_vector[4 - 1])
 
 		if self.term > 4:
 			for n in range(5, self.term + 1):
 				if n % 2 != 0:
-					density_functions[n] = 1 / (1 / density_functions[n - 1] + a[n] * ((n - 1) / 2) * p05_term ** ((n - 3) / 2))
+					density_functions[n] = 1 / (1 / density_functions[n - 1] + self.a_vector[n - 1] * ((n - 1) / 2) * p05_term ** ((n - 3) / 2))
 
 				if n % 2 == 0:
-					density_functions[n] = 1 / (1 / density_functions[n - 1] + a[n] * (p05_term ** (n / 2 - 1) / p1p_term +
+					density_functions[n] = 1 / (1 / density_functions[n - 1] + self.a_vector[n - 1] * (p05_term ** (n / 2 - 1) / p1p_term +
 																		 (n / 2 - 1) * p05_term ** (n / 2 - 2) * ln_p_term))
 
 		density_function = density_functions[self.term]
@@ -618,7 +616,7 @@ class _MetaLogisticMonoFit(stats.rv_continuous):
 			p_from = self.get_cumulative_prob(x_from)
 			p_to = self.get_cumulative_prob(x_to)
 
-		cdf_ps = np.linspace(p_from, p_to, n)
+		cdf_ps = self.get_linspace_for_plot(p_from, p_to, n)
 		cdf_xs = self.quantile(cdf_ps)
 
 		return {'X-values': cdf_xs, 'Probabilities': cdf_ps}
@@ -630,11 +628,35 @@ class _MetaLogisticMonoFit(stats.rv_continuous):
 			p_from = self.get_cumulative_prob(x_from)
 			p_to = self.get_cumulative_prob(x_to)
 
-		pdf_ps = np.linspace(p_from, p_to, n)
+		pdf_ps = self.get_linspace_for_plot(p_from, p_to, n)
 		pdf_xs = self.quantile(pdf_ps)
 		pdf_densities = self.density_m(pdf_ps)
 
 		return {'X-values': pdf_xs, 'Densities': pdf_densities}
+
+	def get_linspace_for_plot(self, p_from, p_to, n):
+		"""
+		Solve the following system:
+
+		N = MIDDLE + 2*TAIL
+		TAIL = (8/84)*MIDDLE*FACTOR
+		"""
+
+		factor = 8
+		n_middle = round(n / (1 + 2 * factor * (8 / 84)))
+		n_tail = round((n - n_middle) / 2)
+
+		p_range = p_to - p_from
+		p_08 = p_from + .08 * p_range
+		p_92 = p_from + .92 * p_range
+
+		ps = np.hstack([
+			np.linspace(p_from, p_08, n_tail),
+			np.linspace(p_08, p_92, n_middle),
+			np.linspace(p_92, p_to, n_tail)
+		])
+
+		return ps
 
 	def display_plot(self, p_from_to=(.001, .999), x_from_to=(None, None), n=100, hide_extreme_densities=50):
 		"""
@@ -803,15 +825,17 @@ class MetaLogistic(_MetaLogisticMonoFit):
 							if candidate.is_feasible():
 								self.candidates_valid.append(candidate)
 
+		# The below should be handled much more nicely
 		if self.candidates_valid:
 			self.valid_distribution = True
 			winning_candidate = sorted(self.candidates_valid, key=lambda c: c.mean_square_error())[0]
-
-			self.__dict__.update(winning_candidate.__dict__.copy())  # Should maybe do some filtering here
-			self.term_used = winning_candidate.term
-			self.fit_method_used = winning_candidate.fit_method
 		else:
 			self.valid_distribution = False
+			winning_candidate = self.candidates_all[0]
+
+		self.__dict__.update(winning_candidate.__dict__.copy())
+		self.term_used = winning_candidate.term
+		self.fit_method_used = winning_candidate.fit_method
 
 
 	def validate_inputs(
