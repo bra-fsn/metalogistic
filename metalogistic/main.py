@@ -11,6 +11,11 @@ cache = {}
 
 class _MetaLogisticMonoFit(stats.rv_continuous):
 	"""
+	todo:
+		Follow the SciPy pattern of distinguishing between an rv_continuous and an rv_frozen.
+		I don't think this is necessarily a great pattern for object-oriented programming (?), but if I'm going to subclass
+		SciPy I should follow the SciPy way.
+
 	This class should generally only be called inside its user-facing subclass MetaLogistic.
 
 	It attempts to fit the data using only one fit method and one number of terms. The other class,
